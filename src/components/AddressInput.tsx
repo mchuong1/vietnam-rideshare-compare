@@ -40,7 +40,7 @@ export function AddressInput({
         <input
           id={id}
           type="text"
-          placeholder={isLocating ? placeholder : placeholder}
+          placeholder={placeholder}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onFocus={onFocus}
