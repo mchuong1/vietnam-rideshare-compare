@@ -50,11 +50,17 @@ export function AddressInput({
           {suggestions.map((s) => (
             <li
               key={s.place_id}
-              onMouseDown={() => onSelect(s)}
-              className="px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0"
+              className="border-b border-gray-100 last:border-0"
             >
-              <span className="mr-1.5 opacity-60">📍</span>
-              {s.display_name}
+              <button
+                type="button"
+                onMouseDown={() => onSelect(s)}
+                onClick={() => onSelect(s)}
+                className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
+              >
+                <span className="mr-1.5 opacity-60">📍</span>
+                {s.display_name}
+              </button>
             </li>
           ))}
         </ul>
