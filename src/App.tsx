@@ -30,7 +30,7 @@ export default function App() {
     const [lat, lon] = geo.coords
     const controller = new AbortController()
     reverseGeocode(lat, lon, controller.signal).then((result) => {
-      if (result) {
+      if (result && from.text.trim() === '') {
         from.setField(result.display_name, [lat, lon])
       }
     })
