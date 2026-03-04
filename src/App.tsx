@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import * as Tabs from '@radix-ui/react-tabs'
 import * as Label from '@radix-ui/react-label'
 import * as Tooltip from '@radix-ui/react-tooltip'
@@ -6,7 +6,9 @@ import { type Lang, type Translation, translations } from './i18n'
 import type { VehicleId } from './types'
 import { SERVICES, VEHICLE_IDS } from './constants'
 import { formatVND, calcPrice } from './utils/pricing'
+import { reverseGeocode } from './utils/api'
 import { useAddressInput } from './hooks/useAddressInput'
+import { useGeolocation } from './hooks/useGeolocation'
 import { useRouteDistance } from './hooks/useRouteDistance'
 import { AddressInput } from './components/AddressInput'
 import { PriceCard } from './components/PriceCard'
@@ -20,6 +22,21 @@ export default function App() {
 
   const from = useAddressInput()
   const to = useAddressInput()
+
+  const geo = useGeolocation()
+
+  useEffect(() => {
+    if (geo.coords === null) return
+    const [lat, lon] = geo.coords
+    const controller = new AbortController()
+    reverseGeocode(lat, lon, controller.signal).then((result) => {
+      if (result) {
+        from.setField(result.display_name, [lat, lon])
+      }
+    })
+    return () => controller.abort()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [geo.coords])
 
   const { distanceKm, distanceStr, routeError, isCalculating } = useRouteDistance(
     from.coords,
@@ -85,7 +102,7 @@ export default function App() {
                 label={t.pickupLabel}
                 marker="A"
                 markerColor="bg-[#00B14F]"
-                placeholder={t.pickupPlaceholder}
+                placeholder={geo.status === 'loading' ? t.locatingPlaceholder : t.pickupPlaceholder}
                 value={from.text}
                 suggestions={from.suggestions}
                 showSuggestions={from.focused}
@@ -93,6 +110,9 @@ export default function App() {
                 onSelect={from.handleSelect}
                 onFocus={from.handleFocus}
                 onBlur={from.handleBlur}
+                isLocating={geo.status === 'loading'}
+                locationError={geo.status === 'error'}
+                locationErrorMsg={t.locationError}
               />
 
               {/* Swap button */}

@@ -32,6 +32,8 @@ export type Translation = {
   disclaimerTooltip: string
   disclaimerFooter: string
   bookNow: string
+  locatingPlaceholder: string
+  locationError: string
 }
 
 export const translations = {
@@ -66,6 +68,8 @@ export const translations = {
       'Prices are estimates based on approximate 2024 base rates and may vary by time, traffic, surge pricing, and promotions. Always check the official app for the exact fare before booking.',
     disclaimerFooter: '— Prices are estimates. Check the app for the exact fare.',
     bookNow: 'Book Now →',
+    locatingPlaceholder: 'Detecting your location…',
+    locationError: 'Could not get your location',
   },
   vi: {
     appTitle: '🛺 So Sánh Giá Xe Việt Nam',
@@ -98,5 +102,7 @@ export const translations = {
       'Giá là ước tính dựa trên mức giá cơ bản năm 2024 và có thể thay đổi theo thời gian, giao thông, giá tăng vọt và khuyến mãi. Luôn kiểm tra ứng dụng chính thức để biết giá chính xác trước khi đặt xe.',
     disclaimerFooter: '— Giá chỉ là ước tính. Kiểm tra ứng dụng để biết giá chính xác.',
     bookNow: 'Đặt ngay →',
+    locatingPlaceholder: 'Đang xác định vị trí…',
+    locationError: 'Không thể lấy vị trí của bạn',
   },
 } as const satisfies Record<Lang, Translation>
