@@ -13,7 +13,6 @@
         "@radix-ui/react-tabs": "^1.1.13",
         "@radix-ui/react-tooltip": "^1.2.8",
         "@tailwindcss/vite": "^4.2.1",
-        "@tanstack/react-query": "^5.90.21",
         "react": "^19.2.0",
         "react-dom": "^19.2.0",
         "tailwindcss": "^4.2.1"
@@ -2536,30 +2535,6 @@
         "vite": "^5.2.0 || ^6 || ^7"
       }
     },
-    "node_modules/@tanstack/query-core": {
-      "version": "5.90.20",
-      "resolved": "https://registry.npmjs.org/@tanstack/query-core/-/query-core-5.90.20.tgz",
-      "integrity": "sha512-OMD2HLpNouXEfZJWcKeVKUgQ5n+n3A2JFmBaScpNDUqSrQSjiveC7dKMe53uJUg1nDG16ttFPz2xfilz6i2uVg==",
-      "funding": {
-        "type": "github",
-        "url": "https://github.com/sponsors/tannerlinsley"
-      }
-    },
-    "node_modules/@tanstack/react-query": {
-      "version": "5.90.21",
-      "resolved": "https://registry.npmjs.org/@tanstack/react-query/-/react-query-5.90.21.tgz",
-      "integrity": "sha512-0Lu6y5t+tvlTJMTO7oh5NSpJfpg/5D41LlThfepTixPYkJ0sE2Jj0m0f6yYqujBwIXlId87e234+MxG3D3g7kg==",
-      "dependencies": {
-        "@tanstack/query-core": "5.90.20"
-      },
-      "funding": {
-        "type": "github",
-        "url": "https://github.com/sponsors/tannerlinsley"
-      },
-      "peerDependencies": {
-        "react": "^18 || ^19"
-      }
-    },
     "node_modules/@types/babel__core": {
       "version": "7.20.5",
       "resolved": "https://registry.npmjs.org/@types/babel__core/-/babel__core-7.20.5.tgz",
@@ -4164,9 +4139,9 @@
       "license": "MIT"
     },
     "node_modules/node-releases": {
-      "version": "2.0.36",
-      "resolved": "https://registry.npmjs.org/node-releases/-/node-releases-2.0.36.tgz",
-      "integrity": "sha512-TdC8FSgHz8Mwtw9g5L4gR/Sh9XhSP/0DEkQxfEFXOpiul5IiHgHan2VhYYb6agDSfp4KuvltmGApc8HMgUrIkA==",
+      "version": "2.0.27",
+      "resolved": "https://registry.npmjs.org/node-releases/-/node-releases-2.0.27.tgz",
+      "integrity": "sha512-nmh3lCkYZ3grZvqcCH+fjmQ7X+H0OeZgP40OierEaAptX4XofMh5kwNbWh7lBduUzCcV/8kZ+NDLCwm2iorIlA==",
       "dev": true,
       "license": "MIT"
     },
