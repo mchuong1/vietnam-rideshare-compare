@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import type { RouteGeometry } from '../types'
@@ -33,9 +33,12 @@ interface RouteMapPreviewProps {
 }
 
 export function RouteMapPreview({ from, to, geometry, height = 300, onFromDrag, onToDrag }: RouteMapPreviewProps) {
-  // Flip [lon, lat] → [lat, lon] for Leaflet
-  const polylinePositions: [number, number][] = geometry.coordinates.map(
-    ([lon, lat]) => [lat, lon],
+  // Flip [lon, lat] → [lat, lon] for Leaflet.
+  // Memoized on geometry.coordinates so FitBounds only re-fires when the route changes,
+  // not on every parent re-render.
+  const polylinePositions = useMemo<[number, number][]>(
+    () => geometry.coordinates.map(([lon, lat]) => [lat, lon]),
+    [geometry.coordinates],
   )
 
   // Compute initial bounds from the full route polyline so the entire path is visible.
