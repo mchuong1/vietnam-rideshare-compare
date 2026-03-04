@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { NominatimResult } from '../types'
 import { searchAddress } from '../utils/api'
@@ -90,12 +90,16 @@ export function useAddressInput(
     setDebouncedText('')
   }
 
-  function setField(newText: string, newCoords: [number, number] | null) {
-    setText(newText)
-    setCoords(newCoords)
-    setFocused(false)
-    setDebouncedText(newText)
-  }
+  const setField = useCallback(
+    (newText: string, newCoords: [number, number] | null) => {
+      setText(newText)
+      setCoords(newCoords)
+      setFocused(false)
+      setDebouncedText(newText)
+    },
+    // React state setters are stable — this callback never needs to be recreated.
+    [],
+  )
 
   return {
     text,

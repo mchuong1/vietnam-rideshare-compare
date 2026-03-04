@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import * as Tabs from '@radix-ui/react-tabs'
 import * as Label from '@radix-ui/react-label'
 import * as Tooltip from '@radix-ui/react-tooltip'
@@ -24,19 +24,24 @@ export default function App() {
   const to = useAddressInput()
 
   const geo = useGeolocation()
+  const { setField: fromSetField } = from
+  // Keep a ref to the latest fromText so the async callback can check it
+  // without making it a reactive dependency (which would re-run the effect
+  // on every keystroke).
+  const fromTextRef = useRef(from.text)
+  useEffect(() => { fromTextRef.current = from.text })
 
   useEffect(() => {
     if (geo.coords === null) return
     const [lat, lon] = geo.coords
     const controller = new AbortController()
     reverseGeocode(lat, lon, controller.signal).then((result) => {
-      if (result && from.text.trim() === '') {
-        from.setField(result.display_name, [lat, lon])
+      if (result && fromTextRef.current.trim() === '') {
+        fromSetField(result.display_name, [lat, lon])
       }
     })
     return () => controller.abort()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [geo.coords])
+  }, [geo.coords, fromSetField])
 
   const { distanceKm, distanceStr, routeError, isCalculating } = useRouteDistance(
     from.coords,
