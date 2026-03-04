@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { NominatimResult } from '../types'
 import { searchAddress } from '../utils/api'
@@ -32,11 +32,21 @@ export function useAddressInput(
   // debouncedText drives the query key — only updates 500 ms after the user stops
   // typing, so in-flight requests for superseded keystrokes are never applied.
   const [debouncedText, setDebouncedText] = useState('')
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const blurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    const id = setTimeout(() => setDebouncedText(text), 500)
-    return () => clearTimeout(id)
+    debounceTimerRef.current = setTimeout(() => setDebouncedText(text), 500)
+    return () => clearTimeout(debounceTimerRef.current ?? undefined)
   }, [text])
+
+  // Clear both pending timers when the component unmounts.
+  useEffect(() => {
+    return () => {
+      clearTimeout(debounceTimerRef.current ?? undefined)
+      clearTimeout(blurTimerRef.current ?? undefined)
+    }
+  }, [])
 
   const query = useQuery({
     queryKey: ['address', debouncedText],
@@ -65,11 +75,12 @@ export function useAddressInput(
   }
 
   function handleFocus() {
+    clearTimeout(blurTimerRef.current ?? undefined)
     setFocused(true)
   }
 
   function handleBlur() {
-    setTimeout(() => setFocused(false), BLUR_DELAY_MS)
+    blurTimerRef.current = setTimeout(() => setFocused(false), BLUR_DELAY_MS)
   }
 
   function reset() {
