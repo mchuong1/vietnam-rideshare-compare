@@ -20,6 +20,7 @@ interface Service {
   accent: string        // Tailwind bg class
   accentText: string    // Tailwind text class
   accentBorder: string  // Tailwind border class
+  bookingUrl: string    // URL to open when booking
   vehicles: Record<VehicleId, VehicleRate>
 }
 
@@ -38,6 +39,7 @@ const SERVICES: Record<'grab' | 'xanh', Service> = {
     accent: 'bg-[#00B14F]',
     accentText: 'text-[#00B14F]',
     accentBorder: 'border-[#00B14F]',
+    bookingUrl: 'https://www.grab.com/vn/transport/',
     vehicles: {
       bike: { label: 'GrabBike', baseFare: 8_000,  perKm: 3_800  },
       car4: { label: 'GrabCar 4', baseFare: 27_000, perKm: 10_500 },
@@ -49,6 +51,7 @@ const SERVICES: Record<'grab' | 'xanh', Service> = {
     accent: 'bg-[#006DB3]',
     accentText: 'text-[#006DB3]',
     accentBorder: 'border-[#006DB3]',
+    bookingUrl: 'https://xanhsm.com/',
     vehicles: {
       bike: { label: 'Xanh SM Bike', baseFare: 8_000,  perKm: 3_600  },
       car4: { label: 'Xanh SM Car 4', baseFare: 25_000, perKm: 9_500  },
@@ -238,6 +241,20 @@ function PriceCard({ service, rate, distanceKm, isCheaper, t }: PriceCardProps) 
             </div>
           </>
         )}
+
+        {/* Book Now button */}
+        <a
+          href={service.bookingUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`mt-auto pt-3 block w-full rounded-xl py-2.5 text-center text-sm font-bold transition-all duration-150 ${
+            isCheaper
+              ? `${service.accent} text-white shadow-sm hover:opacity-90`
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          {t.bookNow}
+        </a>
       </div>
     </div>
   )
