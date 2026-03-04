@@ -56,7 +56,17 @@ const SERVICES: Record<'grab' | 'xanh', Service> = {
     accent: 'bg-[#006DB3]',
     accentText: 'text-[#006DB3]',
     accentBorder: 'border-[#006DB3]',
-    getBookingUrl: () => 'https://xanhsm.com/',
+    getBookingUrl: () => {
+      const ua = navigator.userAgent
+      if (/android/i.test(ua)) {
+        const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.gsm.customer'
+        return `intent://#Intent;package=com.gsm.customer;S.browser_fallback_url=${encodeURIComponent(playStoreUrl)};end`
+      }
+      if (/iPad|iPhone|iPod/.test(ua)) {
+        return 'https://apps.apple.com/app/id6446425595'
+      }
+      return 'https://xanhsm.com/'
+    },
     vehicles: {
       bike: { label: 'Xanh SM Bike', baseFare: 8_000,  perKm: 3_600  },
       car4: { label: 'Xanh SM Car 4', baseFare: 25_000, perKm: 9_500  },
