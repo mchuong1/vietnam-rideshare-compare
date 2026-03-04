@@ -158,7 +158,7 @@ export default function App() {
                       <Tabs.Trigger
                         key={id}
                         value={id}
-                        className={`flex-1 min-w-[120px] rounded-xl border-2 px-4 py-2.5 text-sm font-medium transition-all duration-150 cursor-pointer
+                        className={`flex-1 min-w-30 rounded-xl border-2 px-4 py-2.5 text-sm font-medium transition-all duration-150 cursor-pointer
                           data-[state=inactive]:border-gray-200 data-[state=inactive]:bg-gray-50 data-[state=inactive]:text-gray-600
                           data-[state=active]:border-[#00B14F] data-[state=active]:bg-[#00B14F] data-[state=active]:text-white`}
                       >
