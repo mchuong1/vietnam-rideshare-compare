@@ -1,23 +1,36 @@
-import { MapContainer, TileLayer, Marker } from 'react-leaflet'
+import { useEffect } from 'react'
+import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet'
 import '../utils/leafletIcons'
+
+// ─── MapPanner ────────────────────────────────────────────────────────────────
+// Inner component that imperatively pans the map when coords change, replacing
+// the old `key`-based remount pattern so the map survives coord updates.
+
+function MapPanner({ coords, zoom }: { coords: [number, number]; zoom: number }) {
+  const map = useMap()
+  const [lat, lon] = coords
+  useEffect(() => {
+    map.setView([lat, lon], zoom)
+  }, [map, lat, lon, zoom])
+  return null
+}
 
 // ─── LocationMapPreview ───────────────────────────────────────────────────────
 // Shows a single map tile centred on one address coordinate.
-// `key` should be set by the parent to `coords.join(',')` so the MapContainer
-// remounts whenever the coordinate changes (MapContainer's center is not
-// reactive after initial render).
+// Pass `onDrag` to enable the pin to be dragged to a new location.
 
 interface LocationMapPreviewProps {
   coords: [number, number]  // [lat, lon]
   height?: number
+  onDrag?: (lat: number, lon: number) => void
 }
 
-export function LocationMapPreview({ coords, height = 300 }: LocationMapPreviewProps) {
+export function LocationMapPreview({ coords, height = 300, onDrag }: LocationMapPreviewProps) {
+  const zoom = 17
   return (
     <MapContainer
-      key={coords.join(',')}
       center={coords}
-      zoom={15}
+      zoom={zoom}
       style={{ height, width: '100%' }}
       zoomControl={false}
       attributionControl={false}
@@ -27,7 +40,18 @@ export function LocationMapPreview({ coords, height = 300 }: LocationMapPreviewP
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
       />
-      <Marker position={coords} />
+      <Marker
+        position={coords}
+        draggable={!!onDrag}
+        eventHandlers={{
+          dragend: (e) => {
+            if (!onDrag) return
+            const { lat, lng } = e.target.getLatLng()
+            onDrag(lat, lng)
+          },
+        }}
+      />
+      <MapPanner coords={coords} zoom={zoom} />
     </MapContainer>
   )
 }

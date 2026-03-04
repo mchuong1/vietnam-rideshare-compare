@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import 'leaflet/dist/leaflet.css'
 import * as Tabs from '@radix-ui/react-tabs'
 import * as Label from '@radix-ui/react-label'
@@ -22,6 +22,7 @@ export default function App() {
   const [lang, setLang] = useState<Lang>('en')
   const t: Translation = translations[lang]
   const [vehicleId, setVehicleId] = useState<VehicleId>('bike')
+  const [mapTab, setMapTab] = useState<'pickup' | 'dropoff' | 'route'>('pickup')
 
   const from = useAddressInput()
   const to = useAddressInput()
@@ -46,10 +47,32 @@ export default function App() {
     return () => controller.abort()
   }, [geo.coords, fromSetField])
 
+  // ─── Pin drag handler ───────────────────────────────────────────────────────
+  // Called when either map pin is dragged. Immediately sets a loading placeholder
+  // then resolves the address via reverse geocoding.
+  const handlePinDrop = useCallback(
+    (lat: number, lon: number, setField: (text: string, coords: [number, number] | null) => void) => {
+      setField(t.pinLocating, [lat, lon])
+      reverseGeocode(lat, lon).then((result) => {
+        if (result) setField(result.display_name, [lat, lon])
+      })
+    },
+    [t.pinLocating],
+  )
+
   const { distanceKm, distanceStr, routeGeometry, routeError, isCalculating } = useRouteDistance(
     from.coords,
     to.coords,
   )
+
+  // Auto-switch to dropoff tab when a dropoff address is first resolved.
+  // Using the "adjust state during render" pattern recommended by React to avoid
+  // calling setState inside an effect body.
+  const [prevToCoords, setPrevToCoords] = useState(to.coords)
+  if (prevToCoords !== to.coords) {
+    setPrevToCoords(to.coords)
+    if (to.coords) setMapTab('dropoff')
+  }
 
   function handleSwap() {
     const tmpText = from.text
@@ -116,7 +139,7 @@ export default function App() {
                 showSuggestions={from.focused}
                 onChange={from.handleChange}
                 onSelect={from.handleSelect}
-                onFocus={from.handleFocus}
+                onFocus={() => { from.handleFocus(); if (from.coords) setMapTab('pickup') }}
                 onBlur={from.handleBlur}
                 isLocating={geo.status === 'loading'}
                 locationError={geo.status === 'error'}
@@ -148,7 +171,7 @@ export default function App() {
                 showSuggestions={to.focused}
                 onChange={to.handleChange}
                 onSelect={to.handleSelect}
-                onFocus={to.handleFocus}
+                onFocus={() => { to.handleFocus(); if (to.coords) setMapTab('dropoff') }}
                 onBlur={to.handleBlur}
               />
 
@@ -198,32 +221,73 @@ export default function App() {
           </section>
 
           {/* Map previews */}
-          {distanceKm > 0 && routeGeometry ? (
+          {(from.coords || to.coords || (distanceKm > 0 && routeGeometry)) && (
             <section className="bg-white rounded-2xl shadow-md overflow-hidden">
-              <p className="px-4 pt-3 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                {t.routePreview}
-              </p>
-              <RouteMapPreview from={from.coords!} to={to.coords!} geometry={routeGeometry} />
-            </section>
-          ) : (
-            <>
-              {from.coords && (
-                <section className="bg-white rounded-2xl shadow-md overflow-hidden">
-                  <p className="px-4 pt-3 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <Tabs.Root
+                value={mapTab}
+                onValueChange={(v) => setMapTab(v as 'pickup' | 'dropoff' | 'route')}
+              >
+                <Tabs.List className="flex border-b border-gray-100">
+                  <Tabs.Trigger
+                    value="pickup"
+                    disabled={!from.coords}
+                    className="flex-1 px-4 py-3 text-sm font-medium transition-colors cursor-pointer
+                      data-[state=active]:text-[#00B14F] data-[state=active]:border-b-2 data-[state=active]:border-[#00B14F] data-[state=active]:-mb-px
+                      data-[state=inactive]:text-gray-500 data-[state=inactive]:hover:text-gray-700
+                      disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
                     {t.pickupPreview}
-                  </p>
-                  <LocationMapPreview key={from.coords.join(',')} coords={from.coords} />
-                </section>
-              )}
-              {to.coords && (
-                <section className="bg-white rounded-2xl shadow-md overflow-hidden">
-                  <p className="px-4 pt-3 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  </Tabs.Trigger>
+                  <Tabs.Trigger
+                    value="dropoff"
+                    disabled={!to.coords}
+                    className="flex-1 px-4 py-3 text-sm font-medium transition-colors cursor-pointer
+                      data-[state=active]:text-[#00B14F] data-[state=active]:border-b-2 data-[state=active]:border-[#00B14F] data-[state=active]:-mb-px
+                      data-[state=inactive]:text-gray-500 data-[state=inactive]:hover:text-gray-700
+                      disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
                     {t.dropoffPreview}
-                  </p>
-                  <LocationMapPreview key={to.coords.join(',')} coords={to.coords} />
-                </section>
-              )}
-            </>
+                  </Tabs.Trigger>
+                  <Tabs.Trigger
+                    value="route"
+                    disabled={!(distanceKm > 0 && routeGeometry)}
+                    className="flex-1 px-4 py-3 text-sm font-medium transition-colors cursor-pointer
+                      data-[state=active]:text-[#00B14F] data-[state=active]:border-b-2 data-[state=active]:border-[#00B14F] data-[state=active]:-mb-px
+                      data-[state=inactive]:text-gray-500 data-[state=inactive]:hover:text-gray-700
+                      disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {t.routePreview}
+                  </Tabs.Trigger>
+                </Tabs.List>
+                <Tabs.Content value="pickup">
+                  {from.coords && (
+                    <LocationMapPreview
+                      coords={from.coords}
+                      onDrag={(lat, lon) => handlePinDrop(lat, lon, from.setField)}
+                    />
+                  )}
+                </Tabs.Content>
+                <Tabs.Content value="dropoff">
+                  {to.coords && (
+                    <LocationMapPreview
+                      coords={to.coords}
+                      onDrag={(lat, lon) => handlePinDrop(lat, lon, to.setField)}
+                    />
+                  )}
+                </Tabs.Content>
+                <Tabs.Content value="route">
+                  {distanceKm > 0 && routeGeometry && from.coords && to.coords && (
+                    <RouteMapPreview
+                      from={from.coords}
+                      to={to.coords}
+                      geometry={routeGeometry}
+                      onFromDrag={(lat, lon) => handlePinDrop(lat, lon, from.setField)}
+                      onToDrag={(lat, lon) => handlePinDrop(lat, lon, to.setField)}
+                    />
+                  )}
+                </Tabs.Content>
+              </Tabs.Root>
+            </section>
           )}
 
           {/* Price cards */}

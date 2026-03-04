@@ -37,6 +37,7 @@ export type Translation = {
   pickupPreview: string
   dropoffPreview: string
   routePreview: string
+  pinLocating: string
 }
 
 export const translations = {
@@ -76,6 +77,7 @@ export const translations = {
     pickupPreview: 'Pickup location',
     dropoffPreview: 'Drop-off location',
     routePreview: 'Route preview',
+    pinLocating: 'Locating…',
   },
   vi: {
     appTitle: '🛺 So Sánh Giá Xe Việt Nam',
@@ -113,5 +115,6 @@ export const translations = {
     pickupPreview: 'Điểm đón',
     dropoffPreview: 'Điểm đến',
     routePreview: 'Xem tuyến đường',
+    pinLocating: 'Đang xác định…',
   },
 } as const satisfies Record<Lang, Translation>
