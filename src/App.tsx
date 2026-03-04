@@ -20,7 +20,7 @@ interface Service {
   accent: string        // Tailwind bg class
   accentText: string    // Tailwind text class
   accentBorder: string  // Tailwind border class
-  bookingUrl: string    // URL to open when booking
+  getBookingUrl: (from: [number, number] | null, to: [number, number] | null) => string
   vehicles: Record<VehicleId, VehicleRate>
 }
 
@@ -39,7 +39,12 @@ const SERVICES: Record<'grab' | 'xanh', Service> = {
     accent: 'bg-[#00B14F]',
     accentText: 'text-[#00B14F]',
     accentBorder: 'border-[#00B14F]',
-    bookingUrl: 'https://www.grab.com/vn/transport/',
+    getBookingUrl: (from, to) => {
+      if (from && to) {
+        return `grab://open?screenType=BOOKING&startLat=${encodeURIComponent(from[0])}&startLng=${encodeURIComponent(from[1])}&endLat=${encodeURIComponent(to[0])}&endLng=${encodeURIComponent(to[1])}`
+      }
+      return 'https://www.grab.com/vn/transport/'
+    },
     vehicles: {
       bike: { label: 'GrabBike', baseFare: 8_000,  perKm: 3_800  },
       car4: { label: 'GrabCar 4', baseFare: 27_000, perKm: 10_500 },
@@ -51,7 +56,7 @@ const SERVICES: Record<'grab' | 'xanh', Service> = {
     accent: 'bg-[#006DB3]',
     accentText: 'text-[#006DB3]',
     accentBorder: 'border-[#006DB3]',
-    bookingUrl: 'https://xanhsm.com/',
+    getBookingUrl: () => 'https://xanhsm.com/',
     vehicles: {
       bike: { label: 'Xanh SM Bike', baseFare: 8_000,  perKm: 3_600  },
       car4: { label: 'Xanh SM Car 4', baseFare: 25_000, perKm: 9_500  },
@@ -183,10 +188,13 @@ interface PriceCardProps {
   distanceKm: number
   isCheaper: boolean
   t: Translation
+  fromCoords: [number, number] | null
+  toCoords: [number, number] | null
 }
 
-function PriceCard({ service, rate, distanceKm, isCheaper, t }: PriceCardProps) {
+function PriceCard({ service, rate, distanceKm, isCheaper, t, fromCoords, toCoords }: PriceCardProps) {
   const total = distanceKm > 0 ? calcPrice(rate, distanceKm) : null
+  const bookingUrl = service.getBookingUrl(fromCoords, toCoords)
 
   return (
     <div
@@ -244,7 +252,7 @@ function PriceCard({ service, rate, distanceKm, isCheaper, t }: PriceCardProps) 
 
         {/* Book Now button */}
         <a
-          href={service.bookingUrl}
+          href={bookingUrl}
           target="_blank"
           rel="noopener noreferrer"
           className={`mt-auto pt-3 block w-full rounded-xl py-2.5 text-center text-sm font-bold transition-all duration-150 ${
@@ -508,6 +516,8 @@ export default function App() {
               distanceKm={km}
               isCheaper={grabCheaper}
               t={t}
+              fromCoords={fromCoords}
+              toCoords={toCoords}
             />
             <PriceCard
               service={SERVICES.xanh}
@@ -515,6 +525,8 @@ export default function App() {
               distanceKm={km}
               isCheaper={xanhCheaper}
               t={t}
+              fromCoords={fromCoords}
+              toCoords={toCoords}
             />
           </section>
 
