@@ -3,6 +3,7 @@ import * as Tabs from '@radix-ui/react-tabs'
 import * as Label from '@radix-ui/react-label'
 import * as Separator from '@radix-ui/react-separator'
 import * as Tooltip from '@radix-ui/react-tooltip'
+import { type Lang, type Translation, translations } from './i18n'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -56,11 +57,7 @@ const SERVICES: Record<'grab' | 'xanh', Service> = {
   },
 }
 
-const VEHICLE_TABS: { id: VehicleId; label: string }[] = [
-  { id: 'bike', label: '🛵 Motorcycle' },
-  { id: 'car4', label: '🚗 Car 4-seat' },
-  { id: 'car7', label: '🚐 Car 7-seat' },
-]
+const VEHICLE_IDS: VehicleId[] = ['bike', 'car4', 'car7']
 
 // ─── Address API helpers ──────────────────────────────────────────────────────
 
@@ -182,9 +179,10 @@ interface PriceCardProps {
   rate: VehicleRate
   distanceKm: number
   isCheaper: boolean
+  t: Translation
 }
 
-function PriceCard({ service, rate, distanceKm, isCheaper }: PriceCardProps) {
+function PriceCard({ service, rate, distanceKm, isCheaper, t }: PriceCardProps) {
   const total = distanceKm > 0 ? calcPrice(rate, distanceKm) : null
 
   return (
@@ -200,7 +198,7 @@ function PriceCard({ service, rate, distanceKm, isCheaper }: PriceCardProps) {
         <span
           className={`absolute top-3 right-3 text-xs font-bold px-2.5 py-0.5 rounded-full bg-white border ${service.accentBorder} ${service.accentText}`}
         >
-          ✓ Best Price
+          {t.bestPrice}
         </span>
       )}
 
@@ -218,11 +216,11 @@ function PriceCard({ service, rate, distanceKm, isCheaper }: PriceCardProps) {
       {/* Body */}
       <div className="px-5 py-4 flex flex-col gap-2.5 flex-1">
         <div className="flex justify-between text-sm text-gray-500">
-          <span>Base fare</span>
+          <span>{t.baseFare}</span>
           <span className="font-semibold text-gray-800">{formatVND(rate.baseFare)}</span>
         </div>
         <div className="flex justify-between text-sm text-gray-500">
-          <span>Per km</span>
+          <span>{t.perKm}</span>
           <span className="font-semibold text-gray-800">{formatVND(rate.perKm)}</span>
         </div>
 
@@ -231,7 +229,7 @@ function PriceCard({ service, rate, distanceKm, isCheaper }: PriceCardProps) {
             <Separator.Root className="bg-gray-100 h-px my-1" />
             <div className="flex justify-between items-baseline">
               <span className="text-sm text-gray-600 font-medium">
-                Est. total&nbsp;
+                {t.estTotal}&nbsp;
                 <span className="text-gray-400 font-normal">({distanceKm} km)</span>
               </span>
               <span className={`text-2xl font-extrabold ${service.accentText}`}>
@@ -248,6 +246,9 @@ function PriceCard({ service, rate, distanceKm, isCheaper }: PriceCardProps) {
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 export default function App() {
+  const [lang, setLang] = useState<Lang>('en')
+  const t = translations[lang]
+
   const [fromText, setFromText] = useState('')
   const [toText, setToText] = useState('')
   const [fromCoords, setFromCoords] = useState<[number, number] | null>(null)
@@ -257,13 +258,13 @@ export default function App() {
   const [fromFocused, setFromFocused] = useState(false)
   const [toFocused, setToFocused] = useState(false)
   const [distance, setDistance] = useState('')
-  const [routeError, setRouteError] = useState<string | null>(null)
+  const [routeError, setRouteError] = useState(false)
   const [vehicleId, setVehicleId] = useState<VehicleId>('bike')
 
   // Derived: true while both coords are known but we haven't received the route
   // result yet. Expressed as derived state so the effect body only ever calls
   // setState inside async callbacks (satisfies react-hooks/set-state-in-effect).
-  const isCalculating = fromCoords !== null && toCoords !== null && distance === '' && routeError === null
+  const isCalculating = fromCoords !== null && toCoords !== null && distance === '' && !routeError
 
   const fromTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const toTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -272,7 +273,7 @@ export default function App() {
     setFromText(text)
     setFromCoords(null)
     setDistance('')
-    setRouteError(null)
+    setRouteError(false)
     if (fromTimer.current) clearTimeout(fromTimer.current)
     if (text.trim().length >= 3) {
       fromTimer.current = setTimeout(() => {
@@ -287,7 +288,7 @@ export default function App() {
     setToText(text)
     setToCoords(null)
     setDistance('')
-    setRouteError(null)
+    setRouteError(false)
     if (toTimer.current) clearTimeout(toTimer.current)
     if (text.trim().length >= 3) {
       toTimer.current = setTimeout(() => {
@@ -304,7 +305,7 @@ export default function App() {
     setFromSuggestions([])
     setFromFocused(false)
     setDistance('')
-    setRouteError(null)
+    setRouteError(false)
   }
 
   function handleToSelect(result: NominatimResult) {
@@ -313,7 +314,7 @@ export default function App() {
     setToSuggestions([])
     setToFocused(false)
     setDistance('')
-    setRouteError(null)
+    setRouteError(false)
   }
 
   function handleSwap() {
@@ -326,7 +327,7 @@ export default function App() {
     setFromSuggestions([])
     setToSuggestions([])
     setDistance('')
-    setRouteError(null)
+    setRouteError(false)
   }
 
   useEffect(() => {
@@ -337,7 +338,7 @@ export default function App() {
         if (km !== null) {
           setDistance(String(km))
         } else {
-          setRouteError('Could not calculate route. Please check the addresses.')
+          setRouteError(true)
         }
       }
     })
@@ -355,11 +356,11 @@ export default function App() {
   let savingsMsg: string | null = null
   if (grabTotal !== null && xanhTotal !== null) {
     if (grabTotal < xanhTotal) {
-      savingsMsg = `Grab saves you ${formatVND(xanhTotal - grabTotal)} compared to Xanh SM.`
+      savingsMsg = t.savingsGrab(formatVND(xanhTotal - grabTotal))
     } else if (xanhTotal < grabTotal) {
-      savingsMsg = `Xanh SM saves you ${formatVND(grabTotal - xanhTotal)} compared to Grab.`
+      savingsMsg = t.savingsXanh(formatVND(grabTotal - xanhTotal))
     } else {
-      savingsMsg = 'Both services offer the same price for this trip.'
+      savingsMsg = t.savingsTie
     }
   }
 
@@ -367,13 +368,24 @@ export default function App() {
     <Tooltip.Provider delayDuration={200}>
       <div className="min-h-screen bg-gray-50 font-sans">
         {/* Header */}
-        <header className="bg-white border-b border-gray-200 px-4 py-6 text-center">
+        <header className="bg-white border-b border-gray-200 px-4 py-6 text-center relative">
+          <button
+            type="button"
+            onClick={() => setLang((l) => (l === 'en' ? 'vi' : 'en'))}
+            aria-label={t.langToggleLabel}
+            className="absolute right-4 top-1/2 -translate-y-1/2 rounded-lg border-2 border-gray-200 px-3 py-1.5 text-xs font-bold text-gray-600 hover:border-[#00B14F] hover:text-[#00B14F] transition-colors cursor-pointer"
+          >
+            {t.langToggle}
+          </button>
           <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-            🛺 Vietnam Rideshare Compare
+            {t.appTitle}
           </h1>
           <p className="mt-1 text-gray-500 text-sm">
-            Instantly compare <span className="font-semibold text-[#00B14F]">Grab</span> vs{' '}
-            <span className="font-semibold text-[#006DB3]">Xanh SM</span> prices
+            {t.appSubtitle}{' '}
+            <span className="font-semibold text-[#00B14F]">Grab</span>{' '}
+            {t.appSubtitleAnd}{' '}
+            <span className="font-semibold text-[#006DB3]">Xanh SM</span>{' '}
+            {t.appSubtitlePrices}
           </p>
         </header>
 
@@ -384,10 +396,10 @@ export default function App() {
             <div className="flex flex-col gap-3">
               <AddressInput
                 id="from"
-                label="Pickup location"
+                label={t.pickupLabel}
                 marker="A"
                 markerColor="bg-[#00B14F]"
-                placeholder="Enter pickup address…"
+                placeholder={t.pickupPlaceholder}
                 value={fromText}
                 suggestions={fromSuggestions}
                 showSuggestions={fromFocused}
@@ -403,7 +415,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={handleSwap}
-                  aria-label="Swap pickup and destination"
+                  aria-label={t.swapAriaLabel}
                   className="text-gray-400 hover:text-[#00B14F] text-lg transition-colors p-1 rounded-lg hover:bg-gray-50 cursor-pointer"
                 >
                   ⇅
@@ -413,10 +425,10 @@ export default function App() {
 
               <AddressInput
                 id="to"
-                label="Destination"
+                label={t.destinationLabel}
                 marker="B"
                 markerColor="bg-[#006DB3]"
-                placeholder="Enter destination address…"
+                placeholder={t.destinationPlaceholder}
                 value={toText}
                 suggestions={toSuggestions}
                 showSuggestions={toFocused}
@@ -428,15 +440,15 @@ export default function App() {
 
               {/* Route status */}
               {isCalculating && (
-                <p className="text-sm text-gray-500 text-center">⏳ Calculating route…</p>
+                <p className="text-sm text-gray-500 text-center">{t.calculating}</p>
               )}
               {routeError && (
-                <p className="text-sm text-red-500 text-center">{routeError}</p>
+                <p className="text-sm text-red-500 text-center">{t.routeError}</p>
               )}
               {!isCalculating && !routeError && distance && (
                 <div className="flex items-center gap-2 rounded-xl bg-gray-50 border border-gray-200 px-4 py-2.5">
                   <span className="text-base">🗺️</span>
-                  <span className="text-sm text-gray-500">Route distance</span>
+                  <span className="text-sm text-gray-500">{t.routeDistance}</span>
                   <span className="ml-auto font-bold text-gray-800">{distance} km</span>
                 </div>
               )}
@@ -445,24 +457,27 @@ export default function App() {
             {/* Vehicle type tabs */}
             <div className="flex flex-col gap-1.5">
               <Label.Root className="text-sm font-semibold text-gray-700">
-                Vehicle type
+                {t.vehicleType}
               </Label.Root>
               <Tabs.Root
                 value={vehicleId}
                 onValueChange={(v) => setVehicleId(v as VehicleId)}
               >
                 <Tabs.List className="flex gap-2 flex-wrap">
-                  {VEHICLE_TABS.map((tab) => (
-                    <Tabs.Trigger
-                      key={tab.id}
-                      value={tab.id}
-                      className={`flex-1 min-w-[120px] rounded-xl border-2 px-4 py-2.5 text-sm font-medium transition-all duration-150 cursor-pointer
-                        data-[state=inactive]:border-gray-200 data-[state=inactive]:bg-gray-50 data-[state=inactive]:text-gray-600
-                        data-[state=active]:border-[#00B14F] data-[state=active]:bg-[#00B14F] data-[state=active]:text-white`}
-                    >
-                      {tab.label}
-                    </Tabs.Trigger>
-                  ))}
+                  {VEHICLE_IDS.map((id) => {
+                    const vehicleLabels: Record<VehicleId, string> = { bike: t.vehicleBike, car4: t.vehicleCar4, car7: t.vehicleCar7 }
+                    return (
+                      <Tabs.Trigger
+                        key={id}
+                        value={id}
+                        className={`flex-1 min-w-[120px] rounded-xl border-2 px-4 py-2.5 text-sm font-medium transition-all duration-150 cursor-pointer
+                          data-[state=inactive]:border-gray-200 data-[state=inactive]:bg-gray-50 data-[state=inactive]:text-gray-600
+                          data-[state=active]:border-[#00B14F] data-[state=active]:bg-[#00B14F] data-[state=active]:text-white`}
+                      >
+                        {vehicleLabels[id]}
+                      </Tabs.Trigger>
+                    )
+                  })}
                 </Tabs.List>
               </Tabs.Root>
             </div>
@@ -475,12 +490,14 @@ export default function App() {
               rate={SERVICES.grab.vehicles[vehicleId]}
               distanceKm={km}
               isCheaper={grabCheaper}
+              t={t}
             />
             <PriceCard
               service={SERVICES.xanh}
               rate={SERVICES.xanh.vehicles[vehicleId]}
               distanceKm={km}
               isCheaper={xanhCheaper}
+              t={t}
             />
           </section>
 
@@ -495,21 +512,19 @@ export default function App() {
           <p className="flex items-center justify-center gap-1.5 text-xs text-gray-400 text-center leading-relaxed">
             <Tooltip.Root>
               <Tooltip.Trigger asChild>
-                <span className="cursor-help underline decoration-dotted">ⓘ Disclaimer</span>
+                <span className="cursor-help underline decoration-dotted">{t.disclaimerTrigger}</span>
               </Tooltip.Trigger>
               <Tooltip.Portal>
                 <Tooltip.Content
                   className="max-w-xs rounded-xl bg-gray-900 px-3 py-2 text-xs text-white shadow-xl"
                   sideOffset={6}
                 >
-                  Prices are estimates based on approximate 2024 base rates and may vary by
-                  time, traffic, surge pricing, and promotions. Always check the official app
-                  for the exact fare before booking.
+                  {t.disclaimerTooltip}
                   <Tooltip.Arrow className="fill-gray-900" />
                 </Tooltip.Content>
               </Tooltip.Portal>
             </Tooltip.Root>
-            — Prices are estimates. Check the app for the exact fare.
+            {t.disclaimerFooter}
           </p>
         </main>
       </div>
