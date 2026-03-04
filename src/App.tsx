@@ -29,10 +29,8 @@ export default function App() {
   function handleSwap() {
     const tmpText = from.text
     const tmpCoords = from.coords
-    from.setText(to.text)
-    from.setCoords(to.coords)
-    to.setText(tmpText)
-    to.setCoords(tmpCoords)
+    from.setField(to.text, to.coords)
+    to.setField(tmpText, tmpCoords)
   }
 
   const grabTotal = distanceKm > 0 ? calcPrice(SERVICES.grab.vehicles[vehicleId], distanceKm) : null

@@ -18,6 +18,8 @@ interface UseAddressInputReturn {
   reset: () => void
   setText: (value: string) => void
   setCoords: (coords: [number, number] | null) => void
+  /** Atomically replace text + coords and clear suggestions/focused state. */
+  setField: (text: string, coords: [number, number] | null) => void
 }
 
 export function useAddressInput(
@@ -65,6 +67,13 @@ export function useAddressInput(
     setFocused(false)
   }
 
+  function setField(newText: string, newCoords: [number, number] | null) {
+    setText(newText)
+    setCoords(newCoords)
+    setSuggestions([])
+    setFocused(false)
+  }
+
   return {
     text,
     coords,
@@ -77,5 +86,6 @@ export function useAddressInput(
     reset,
     setText,
     setCoords,
+    setField,
   }
 }
