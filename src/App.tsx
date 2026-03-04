@@ -53,9 +53,21 @@ export default function App() {
   const handlePinDrop = useCallback(
     (lat: number, lon: number, setField: (text: string, coords: [number, number] | null) => void) => {
       setField(t.pinLocating, [lat, lon])
-      reverseGeocode(lat, lon).then((result) => {
-        if (result) setField(result.display_name, [lat, lon])
-      })
+      reverseGeocode(lat, lon)
+        .then((result) => {
+          const coordsText = `${lat.toFixed(5)}, ${lon.toFixed(5)}`
+          if (result) {
+            setField(result.display_name, [lat, lon])
+          } else {
+            // Fallback when reverse geocoding returns null
+            setField(coordsText, [lat, lon])
+          }
+        })
+        .catch(() => {
+          // Fallback when reverse geocoding fails
+          const coordsText = `${lat.toFixed(5)}, ${lon.toFixed(5)}`
+          setField(coordsText, [lat, lon])
+        })
     },
     [t.pinLocating],
   )
