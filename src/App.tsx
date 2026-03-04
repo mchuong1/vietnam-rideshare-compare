@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import * as Tabs from '@radix-ui/react-tabs'
 import * as Label from '@radix-ui/react-label'
 import * as Separator from '@radix-ui/react-separator'
@@ -20,6 +20,13 @@ interface Service {
   accentText: string    // Tailwind text class
   accentBorder: string  // Tailwind border class
   vehicles: Record<VehicleId, VehicleRate>
+}
+
+interface NominatimResult {
+  place_id: number
+  display_name: string
+  lat: string
+  lon: string
 }
 
 // ─── Pricing data (approximate VND rates, 2024) ────────────────────────────
@@ -55,6 +62,39 @@ const VEHICLE_TABS: { id: VehicleId; label: string }[] = [
   { id: 'car7', label: '🚐 Car 7-seat' },
 ]
 
+// ─── Address API helpers ──────────────────────────────────────────────────────
+
+async function searchAddress(query: string): Promise<NominatimResult[]> {
+  if (query.trim().length < 3) return []
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&countrycodes=vn&limit=5`,
+      { headers: { 'Accept-Language': 'vi,en' } },
+    )
+    return await res.json() as NominatimResult[]
+  } catch {
+    return []
+  }
+}
+
+async function fetchRouteDistanceKm(
+  from: [number, number],
+  to: [number, number],
+): Promise<number | null> {
+  try {
+    // OSRM expects [longitude, latitude]
+    const url = `https://router.project-osrm.org/route/v1/driving/${from[1]},${from[0]};${to[1]},${to[0]}?overview=false`
+    const res = await fetch(url)
+    const data = await res.json() as { code: string; routes?: { distance: number }[] }
+    if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+      return Math.round(data.routes[0].distance / 100) / 10 // meters → km, 1 dp
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function calcPrice(rate: VehicleRate, km: number): number {
@@ -67,6 +107,72 @@ function formatVND(amount: number): string {
     currency: 'VND',
     maximumFractionDigits: 0,
   }).format(amount)
+}
+
+// ─── AddressInput ─────────────────────────────────────────────────────────────
+
+// Delay before hiding the suggestion dropdown on blur, giving onMouseDown on a
+// suggestion enough time to fire before the list is unmounted.
+const BLUR_DELAY_MS = 150
+
+interface AddressInputProps {
+  id: string
+  label: string
+  marker: string
+  markerColor: string
+  placeholder: string
+  value: string
+  suggestions: NominatimResult[]
+  showSuggestions: boolean
+  onChange: (text: string) => void
+  onSelect: (result: NominatimResult) => void
+  onFocus: () => void
+  onBlur: () => void
+}
+
+function AddressInput({
+  id, label, marker, markerColor, placeholder, value,
+  suggestions, showSuggestions, onChange, onSelect, onFocus, onBlur,
+}: AddressInputProps) {
+  return (
+    <div className="relative flex flex-col gap-1.5">
+      <Label.Root htmlFor={id} className="text-sm font-semibold text-gray-700">
+        {label}
+      </Label.Root>
+      <div className="relative flex items-center">
+        <span
+          className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold text-white pointer-events-none ${markerColor}`}
+        >
+          {marker}
+        </span>
+        <input
+          id={id}
+          type="text"
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onFocus={onFocus}
+          onBlur={onBlur}
+          autoComplete="off"
+          className="w-full rounded-xl border-2 border-gray-200 pl-10 pr-4 py-3 text-base outline-none transition-colors focus:border-[#00B14F]"
+        />
+      </div>
+      {showSuggestions && suggestions.length > 0 && (
+        <ul className="absolute top-full left-0 right-0 z-20 mt-1 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden max-h-64 overflow-y-auto">
+          {suggestions.map((s) => (
+            <li
+              key={s.place_id}
+              onMouseDown={() => onSelect(s)}
+              className="px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0"
+            >
+              <span className="mr-1.5 opacity-60">📍</span>
+              {s.display_name}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
 }
 
 // ─── PriceCard ────────────────────────────────────────────────────────────────
@@ -142,8 +248,101 @@ function PriceCard({ service, rate, distanceKm, isCheaper }: PriceCardProps) {
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const [distance, setDistance] = useState<string>('')
+  const [fromText, setFromText] = useState('')
+  const [toText, setToText] = useState('')
+  const [fromCoords, setFromCoords] = useState<[number, number] | null>(null)
+  const [toCoords, setToCoords] = useState<[number, number] | null>(null)
+  const [fromSuggestions, setFromSuggestions] = useState<NominatimResult[]>([])
+  const [toSuggestions, setToSuggestions] = useState<NominatimResult[]>([])
+  const [fromFocused, setFromFocused] = useState(false)
+  const [toFocused, setToFocused] = useState(false)
+  const [distance, setDistance] = useState('')
+  const [routeError, setRouteError] = useState<string | null>(null)
   const [vehicleId, setVehicleId] = useState<VehicleId>('bike')
+
+  // Derived: true while both coords are known but we haven't received the route
+  // result yet. Expressed as derived state so the effect body only ever calls
+  // setState inside async callbacks (satisfies react-hooks/set-state-in-effect).
+  const isCalculating = fromCoords !== null && toCoords !== null && distance === '' && routeError === null
+
+  const fromTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const toTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function handleFromChange(text: string) {
+    setFromText(text)
+    setFromCoords(null)
+    setDistance('')
+    setRouteError(null)
+    if (fromTimer.current) clearTimeout(fromTimer.current)
+    if (text.trim().length >= 3) {
+      fromTimer.current = setTimeout(() => {
+        searchAddress(text).then(setFromSuggestions)
+      }, 500)
+    } else {
+      setFromSuggestions([])
+    }
+  }
+
+  function handleToChange(text: string) {
+    setToText(text)
+    setToCoords(null)
+    setDistance('')
+    setRouteError(null)
+    if (toTimer.current) clearTimeout(toTimer.current)
+    if (text.trim().length >= 3) {
+      toTimer.current = setTimeout(() => {
+        searchAddress(text).then(setToSuggestions)
+      }, 500)
+    } else {
+      setToSuggestions([])
+    }
+  }
+
+  function handleFromSelect(result: NominatimResult) {
+    setFromText(result.display_name)
+    setFromCoords([parseFloat(result.lat), parseFloat(result.lon)])
+    setFromSuggestions([])
+    setFromFocused(false)
+    setDistance('')
+    setRouteError(null)
+  }
+
+  function handleToSelect(result: NominatimResult) {
+    setToText(result.display_name)
+    setToCoords([parseFloat(result.lat), parseFloat(result.lon)])
+    setToSuggestions([])
+    setToFocused(false)
+    setDistance('')
+    setRouteError(null)
+  }
+
+  function handleSwap() {
+    const tmpText = fromText
+    const tmpCoords = fromCoords
+    setFromText(toText)
+    setFromCoords(toCoords)
+    setToText(tmpText)
+    setToCoords(tmpCoords)
+    setFromSuggestions([])
+    setToSuggestions([])
+    setDistance('')
+    setRouteError(null)
+  }
+
+  useEffect(() => {
+    if (!fromCoords || !toCoords) return
+    let cancelled = false
+    fetchRouteDistanceKm(fromCoords, toCoords).then((km) => {
+      if (!cancelled) {
+        if (km !== null) {
+          setDistance(String(km))
+        } else {
+          setRouteError('Could not calculate route. Please check the addresses.')
+        }
+      }
+    })
+    return () => { cancelled = true }
+  }, [fromCoords, toCoords])
 
   const km = parseFloat(distance) || 0
 
@@ -181,24 +380,66 @@ export default function App() {
         <main className="max-w-2xl mx-auto px-4 py-8 flex flex-col gap-6">
           {/* Input card */}
           <section className="bg-white rounded-2xl shadow-md p-6 flex flex-col gap-5">
-            {/* Distance input */}
-            <div className="flex flex-col gap-1.5">
-              <Label.Root
-                htmlFor="distance"
-                className="text-sm font-semibold text-gray-700"
-              >
-                Trip distance (km)
-              </Label.Root>
-              <input
-                id="distance"
-                type="number"
-                min="0.1"
-                step="0.1"
-                placeholder="e.g. 5"
-                value={distance}
-                onChange={(e) => setDistance(e.target.value)}
-                className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-base outline-none transition-colors focus:border-[#00B14F]"
+            {/* Address inputs */}
+            <div className="flex flex-col gap-3">
+              <AddressInput
+                id="from"
+                label="Pickup location"
+                marker="A"
+                markerColor="bg-[#00B14F]"
+                placeholder="Enter pickup address…"
+                value={fromText}
+                suggestions={fromSuggestions}
+                showSuggestions={fromFocused}
+                onChange={handleFromChange}
+                onSelect={handleFromSelect}
+                onFocus={() => setFromFocused(true)}
+                onBlur={() => { setTimeout(() => setFromFocused(false), BLUR_DELAY_MS) }}
               />
+
+              {/* Swap button */}
+              <div className="flex items-center gap-3">
+                <div className="flex-1 border-t border-dashed border-gray-200" />
+                <button
+                  type="button"
+                  onClick={handleSwap}
+                  aria-label="Swap pickup and destination"
+                  className="text-gray-400 hover:text-[#00B14F] text-lg transition-colors p-1 rounded-lg hover:bg-gray-50 cursor-pointer"
+                >
+                  ⇅
+                </button>
+                <div className="flex-1 border-t border-dashed border-gray-200" />
+              </div>
+
+              <AddressInput
+                id="to"
+                label="Destination"
+                marker="B"
+                markerColor="bg-[#006DB3]"
+                placeholder="Enter destination address…"
+                value={toText}
+                suggestions={toSuggestions}
+                showSuggestions={toFocused}
+                onChange={handleToChange}
+                onSelect={handleToSelect}
+                onFocus={() => setToFocused(true)}
+                onBlur={() => { setTimeout(() => setToFocused(false), BLUR_DELAY_MS) }}
+              />
+
+              {/* Route status */}
+              {isCalculating && (
+                <p className="text-sm text-gray-500 text-center">⏳ Calculating route…</p>
+              )}
+              {routeError && (
+                <p className="text-sm text-red-500 text-center">{routeError}</p>
+              )}
+              {!isCalculating && !routeError && distance && (
+                <div className="flex items-center gap-2 rounded-xl bg-gray-50 border border-gray-200 px-4 py-2.5">
+                  <span className="text-base">🗺️</span>
+                  <span className="text-sm text-gray-500">Route distance</span>
+                  <span className="ml-auto font-bold text-gray-800">{distance} km</span>
+                </div>
+              )}
             </div>
 
             {/* Vehicle type tabs */}
