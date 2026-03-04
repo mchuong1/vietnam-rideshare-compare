@@ -43,42 +43,51 @@ export function RouteMapPreview({ from, to, geometry, height = 300, onFromDrag, 
   const initialBounds = L.latLngBounds(polylinePositions.length > 0 ? polylinePositions : [from, to])
 
   return (
-    <MapContainer
-      bounds={initialBounds}
-      boundsOptions={{ padding: [60, 60], maxZoom: 16 }}
-      style={{ height, width: '100%' }}
-      zoomControl={false}
-      attributionControl={false}
-      scrollWheelZoom={false}
-    >
-      <TileLayer
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-      />
-      <Marker
-        position={from}
-        draggable={!!onFromDrag}
-        eventHandlers={{
-          dragend: (e) => {
-            if (!onFromDrag) return
-            const { lat, lng } = e.target.getLatLng()
-            onFromDrag(lat, lng)
-          },
+    <div>
+      <MapContainer
+        bounds={initialBounds}
+        boundsOptions={{ padding: [60, 60], maxZoom: 16 }}
+        style={{ height, width: '100%' }}
+        zoomControl={false}
+        attributionControl={false}
+        scrollWheelZoom={false}
+      >
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        />
+        <Marker
+          position={from}
+          draggable={!!onFromDrag}
+          eventHandlers={{
+            dragend: (e) => {
+              if (!onFromDrag) return
+              const { lat, lng } = e.target.getLatLng()
+              onFromDrag(lat, lng)
+            },
+          }}
+        />
+        <Marker
+          position={to}
+          draggable={!!onToDrag}
+          eventHandlers={{
+            dragend: (e) => {
+              if (!onToDrag) return
+              const { lat, lng } = e.target.getLatLng()
+              onToDrag(lat, lng)
+            },
+          }}
+        />
+        <Polyline positions={polylinePositions} color="#00B14F" weight={4} opacity={0.85} />
+        <FitBounds positions={polylinePositions} />
+      </MapContainer>
+      <div
+        className="mt-1 text-[11px] text-gray-500"
+        dangerouslySetInnerHTML={{
+          __html:
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         }}
       />
-      <Marker
-        position={to}
-        draggable={!!onToDrag}
-        eventHandlers={{
-          dragend: (e) => {
-            if (!onToDrag) return
-            const { lat, lng } = e.target.getLatLng()
-            onToDrag(lat, lng)
-          },
-        }}
-      />
-      <Polyline positions={polylinePositions} color="#00B14F" weight={4} opacity={0.85} />
-      <FitBounds positions={polylinePositions} />
-    </MapContainer>
+    </div>
   )
 }
