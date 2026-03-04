@@ -2,6 +2,25 @@ import type { NominatimResult } from '../types'
 
 // ─── Address & Route API helpers ──────────────────────────────────────────────
 
+export async function reverseGeocode(
+  lat: number,
+  lon: number,
+  signal?: AbortSignal,
+): Promise<NominatimResult | null> {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&countrycodes=vn`,
+      { headers: { 'Accept-Language': 'vi,en' }, signal },
+    )
+    if (!res.ok) return null
+    const data = await res.json() as NominatimResult & { error?: string }
+    if (data.error) return null
+    return data
+  } catch {
+    return null
+  }
+}
+
 export async function searchAddress(query: string, signal?: AbortSignal): Promise<NominatimResult[]> {
   if (query.trim().length < 3) return []
   try {
