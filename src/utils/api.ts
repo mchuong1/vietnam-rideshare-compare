@@ -9,6 +9,7 @@ export async function searchAddress(query: string): Promise<NominatimResult[]> {
       `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&countrycodes=vn&limit=5`,
       { headers: { 'Accept-Language': 'vi,en' } },
     )
+    if (!res.ok) return [];
     return await res.json() as NominatimResult[]
   } catch {
     return []
