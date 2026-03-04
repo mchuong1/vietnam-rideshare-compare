@@ -33,7 +33,6 @@ export function LocationMapPreview({ coords, height = 300, onDrag }: LocationMap
       zoom={zoom}
       style={{ height, width: '100%' }}
       zoomControl={false}
-      attributionControl={false}
       scrollWheelZoom={false}
     >
       <TileLayer
