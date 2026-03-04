@@ -17,6 +17,11 @@ export interface Service {
   vehicles: Record<VehicleId, VehicleRate>
 }
 
+export interface RouteGeometry {
+  type: 'LineString'
+  coordinates: [number, number][]  // [lon, lat]
+}
+
 export interface NominatimResult {
   place_id: number
   display_name: string

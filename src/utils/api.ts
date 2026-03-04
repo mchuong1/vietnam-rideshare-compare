@@ -1,4 +1,4 @@
-import type { NominatimResult } from '../types'
+import type { NominatimResult, RouteGeometry } from '../types'
 
 // ─── Address & Route API helpers ──────────────────────────────────────────────
 
@@ -35,22 +35,34 @@ export async function searchAddress(query: string, signal?: AbortSignal): Promis
   }
 }
 
-export async function fetchRouteDistanceKm(
+export interface RouteResult {
+  distanceKm: number | null
+  geometry: RouteGeometry | null
+}
+
+export async function fetchRoute(
   from: [number, number],
   to: [number, number],
   signal?: AbortSignal,
-): Promise<number | null> {
+): Promise<RouteResult> {
   try {
     // OSRM expects [longitude, latitude]
-    const url = `https://router.project-osrm.org/route/v1/driving/${from[1]},${from[0]};${to[1]},${to[0]}?overview=false`
+    const url = `https://router.project-osrm.org/route/v1/driving/${from[1]},${from[0]};${to[1]},${to[0]}?overview=full&geometries=geojson`
     const res = await fetch(url, { signal })
-    if (!res.ok) return null
-    const data = await res.json() as { code: string; routes?: { distance: number }[] }
-    if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
-      return Math.round(data.routes[0].distance / 100) / 10 // meters → km, 1 dp
+    if (!res.ok) return { distanceKm: null, geometry: null }
+    const data = await res.json() as {
+      code: string
+      routes?: { distance: number; geometry: RouteGeometry }[]
     }
-    return null
+    if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+      const route = data.routes[0]
+      return {
+        distanceKm: Math.round(route.distance / 100) / 10, // meters → km, 1 dp
+        geometry: route.geometry,
+      }
+    }
+    return { distanceKm: null, geometry: null }
   } catch {
-    return null
+    return { distanceKm: null, geometry: null }
   }
 }

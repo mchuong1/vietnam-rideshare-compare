@@ -34,6 +34,9 @@ export type Translation = {
   bookNow: string
   locatingPlaceholder: string
   locationError: string
+  pickupPreview: string
+  dropoffPreview: string
+  routePreview: string
 }
 
 export const translations = {
@@ -70,6 +73,9 @@ export const translations = {
     bookNow: 'Book Now →',
     locatingPlaceholder: 'Detecting your location…',
     locationError: 'Could not get your location',
+    pickupPreview: 'Pickup location',
+    dropoffPreview: 'Drop-off location',
+    routePreview: 'Route preview',
   },
   vi: {
     appTitle: '🛺 So Sánh Giá Xe Việt Nam',
@@ -104,5 +110,8 @@ export const translations = {
     bookNow: 'Đặt ngay →',
     locatingPlaceholder: 'Đang xác định vị trí…',
     locationError: 'Không thể lấy vị trí của bạn',
+    pickupPreview: 'Điểm đón',
+    dropoffPreview: 'Điểm đến',
+    routePreview: 'Xem tuyến đường',
   },
 } as const satisfies Record<Lang, Translation>

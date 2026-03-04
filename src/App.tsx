@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import 'leaflet/dist/leaflet.css'
 import * as Tabs from '@radix-ui/react-tabs'
 import * as Label from '@radix-ui/react-label'
 import * as Tooltip from '@radix-ui/react-tooltip'
@@ -12,6 +13,8 @@ import { useGeolocation } from './hooks/useGeolocation'
 import { useRouteDistance } from './hooks/useRouteDistance'
 import { AddressInput } from './components/AddressInput'
 import { PriceCard } from './components/PriceCard'
+import { LocationMapPreview } from './components/LocationMapPreview'
+import { RouteMapPreview } from './components/RouteMapPreview'
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 
@@ -43,7 +46,7 @@ export default function App() {
     return () => controller.abort()
   }, [geo.coords, fromSetField])
 
-  const { distanceKm, distanceStr, routeError, isCalculating } = useRouteDistance(
+  const { distanceKm, distanceStr, routeGeometry, routeError, isCalculating } = useRouteDistance(
     from.coords,
     to.coords,
   )
@@ -193,6 +196,35 @@ export default function App() {
               </Tabs.Root>
             </div>
           </section>
+
+          {/* Map previews */}
+          {distanceKm > 0 && routeGeometry ? (
+            <section className="bg-white rounded-2xl shadow-md overflow-hidden">
+              <p className="px-4 pt-3 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                {t.routePreview}
+              </p>
+              <RouteMapPreview from={from.coords!} to={to.coords!} geometry={routeGeometry} />
+            </section>
+          ) : (
+            <>
+              {from.coords && (
+                <section className="bg-white rounded-2xl shadow-md overflow-hidden">
+                  <p className="px-4 pt-3 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    {t.pickupPreview}
+                  </p>
+                  <LocationMapPreview key={from.coords.join(',')} coords={from.coords} />
+                </section>
+              )}
+              {to.coords && (
+                <section className="bg-white rounded-2xl shadow-md overflow-hidden">
+                  <p className="px-4 pt-3 pb-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    {t.dropoffPreview}
+                  </p>
+                  <LocationMapPreview key={to.coords.join(',')} coords={to.coords} />
+                </section>
+              )}
+            </>
+          )}
 
           {/* Price cards */}
           <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
