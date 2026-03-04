@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { fetchRouteDistanceKm } from '../utils/api'
 
 // ─── useRouteDistance ─────────────────────────────────────────────────────────
@@ -11,46 +11,23 @@ interface UseRouteDistanceReturn {
   isCalculating: boolean
 }
 
-interface RouteResult {
-  distance: string
-  routeError: boolean
-  computedFor: string | null
-}
-
 export function useRouteDistance(
   fromCoords: [number, number] | null,
   toCoords: [number, number] | null,
 ): UseRouteDistanceReturn {
-  const [{ distance, routeError, computedFor }, setResult] = useState<RouteResult>({
-    distance: '',
-    routeError: false,
-    computedFor: null,
+  const enabled = fromCoords !== null && toCoords !== null
+
+  const query = useQuery({
+    queryKey: ['route', fromCoords, toCoords],
+    queryFn: ({ signal }) => fetchRouteDistanceKm(fromCoords!, toCoords!, signal),
+    enabled,
+    staleTime: 5 * 60_000,
   })
 
-  useEffect(() => {
-    if (!fromCoords || !toCoords) return
+  const isCalculating = enabled && query.isPending
+  const distanceKm = typeof query.data === 'number' ? query.data : 0
+  const distanceStr = typeof query.data === 'number' ? String(query.data) : ''
+  const routeError = enabled && !query.isPending && (query.isError || query.data === null)
 
-    const key = JSON.stringify([fromCoords, toCoords])
-    let cancelled = false
-
-    fetchRouteDistanceKm(fromCoords, toCoords).then((km) => {
-      if (!cancelled) {
-        setResult(
-          km !== null
-            ? { distance: String(km), routeError: false, computedFor: key }
-            : { distance: '', routeError: true, computedFor: key },
-        )
-      }
-    })
-    return () => { cancelled = true }
-  }, [fromCoords, toCoords])
-
-  const coordKey = fromCoords && toCoords ? JSON.stringify([fromCoords, toCoords]) : null
-  const isStale = coordKey !== computedFor
-  const isCalculating = fromCoords !== null && toCoords !== null && isStale
-  const distanceStr = isStale ? '' : distance
-  const hasRouteError = !isStale && routeError
-  const distanceKm = parseFloat(distanceStr) || 0
-
-  return { distanceKm, distanceStr, routeError: hasRouteError, isCalculating }
+  return { distanceKm, distanceStr, routeError, isCalculating }
 }

@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react'
+import { useState, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import type { NominatimResult } from '../types'
 import { searchAddress } from '../utils/api'
 import { BLUR_DELAY_MS } from '../constants'
@@ -27,29 +28,40 @@ export function useAddressInput(
 ): UseAddressInputReturn {
   const [text, setText] = useState('')
   const [coords, setCoords] = useState<[number, number] | null>(null)
-  const [suggestions, setSuggestions] = useState<NominatimResult[]>([])
   const [focused, setFocused] = useState(false)
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // debouncedText drives the query key — only updates 500 ms after the user stops
+  // typing, so in-flight requests for superseded keystrokes are never applied.
+  const [debouncedText, setDebouncedText] = useState('')
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedText(text), 500)
+    return () => clearTimeout(id)
+  }, [text])
+
+  const query = useQuery({
+    queryKey: ['address', debouncedText],
+    queryFn: ({ signal }) => searchAddress(debouncedText, signal),
+    enabled: debouncedText.trim().length >= 3,
+    staleTime: 60_000,
+  })
+
+  // Only surface results while the field is focused; stale cache is invisible
+  // after the user picks a result or blurs away.
+  const suggestions: NominatimResult[] = focused ? (query.data ?? []) : []
 
   function handleChange(value: string) {
     setText(value)
     setCoords(null)
     onCoordsChange?.()
-    if (timer.current) clearTimeout(timer.current)
-    if (value.trim().length >= 3) {
-      timer.current = setTimeout(() => {
-        searchAddress(value).then(setSuggestions)
-      }, 500)
-    } else {
-      setSuggestions([])
-    }
   }
 
   function handleSelect(result: NominatimResult) {
     setText(result.display_name)
     setCoords([parseFloat(result.lat), parseFloat(result.lon)])
-    setSuggestions([])
     setFocused(false)
+    // Sync debouncedText immediately so the debounce timer doesn't fire a
+    // redundant fetch after selection.
+    setDebouncedText(result.display_name)
   }
 
   function handleFocus() {
@@ -63,15 +75,15 @@ export function useAddressInput(
   function reset() {
     setText('')
     setCoords(null)
-    setSuggestions([])
     setFocused(false)
+    setDebouncedText('')
   }
 
   function setField(newText: string, newCoords: [number, number] | null) {
     setText(newText)
     setCoords(newCoords)
-    setSuggestions([])
     setFocused(false)
+    setDebouncedText(newText)
   }
 
   return {
