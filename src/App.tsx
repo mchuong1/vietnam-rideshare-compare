@@ -236,7 +236,21 @@ export default function App() {
           {(from.coords || to.coords || (distanceKm > 0 && routeGeometry)) && (
             <section className="bg-white rounded-2xl shadow-md overflow-hidden">
               <Tabs.Root
-                value={mapTab}
+                value={
+                  mapTab === 'pickup' && !from.coords
+                    ? to.coords
+                      ? 'dropoff'
+                      : 'route'
+                    : mapTab === 'dropoff' && !to.coords
+                      ? from.coords
+                        ? 'pickup'
+                        : 'route'
+                      : mapTab === 'route' && !(distanceKm > 0 && routeGeometry)
+                        ? from.coords
+                          ? 'pickup'
+                          : 'dropoff'
+                        : mapTab
+                }
                 onValueChange={(v) => setMapTab(v as 'pickup' | 'dropoff' | 'route')}
               >
                 <Tabs.List className="flex border-b border-gray-100">
